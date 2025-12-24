@@ -121,7 +121,7 @@ button:disabled{
 }
 
 .multiplier{
-  font-size:36px;
+  font-size:20px;
   font-weight:700;
   color:#ffd36a;
 }
@@ -133,20 +133,19 @@ button:disabled{
 }
 
 .time{
-  font-size:12px;
+  font-size:14px;
   color:var(--muted);
   margin-top:6px;
 }
 
-.history{
-  margin-top:14px;
+.history-list{
+  max-height:300px;
+  overflow:auto;
   font-size:12px;
   color:var(--muted);
-  max-height:120px;
-  overflow:auto;
 }
-.history div{
-  padding:6px 0;
+.history-list div{
+  padding:10px 0;
   border-bottom:1px solid rgba(255,255,255,.05);
 }
 
@@ -159,7 +158,7 @@ button:disabled{
 
 .hidden{display:none}
 
-/* Modal */
+/* MODAL */
 #modal{
   display:none;
   position:fixed;
@@ -167,32 +166,26 @@ button:disabled{
   background:rgba(0,0,0,.6);
   align-items:center;
   justify-content:center;
+  z-index:1000;
 }
-
 .modal-box{
   background:#0f1529;
-  padding:20px;
+  padding:22px;
   border-radius:14px;
   width:260px;
   text-align:center;
 }
-
 .spinner{
-  width:28px;height:28px;
+  width:28px;
+  height:28px;
   border:3px solid #2a2f45;
   border-top:3px solid var(--accent);
   border-radius:50%;
-  margin:12px auto;
+  margin:14px auto;
   animation:spin 1s linear infinite;
 }
-
 @keyframes spin{to{transform:rotate(360deg)}}
-@keyframes successPop{
-  from{opacity:0;transform:scale(.95)}
-  to{opacity:1;transform:scale(1)}
-}
-.success{color:var(--success)}
-.success-anim{animation:successPop .3s ease-out}
+.success{color:var(--success);font-weight:600}
 </style>
 </head>
 
@@ -204,9 +197,11 @@ button:disabled{
     <p>Private Signal Dashboard</p>
   </header>
 
+  <!-- TABS -->
   <div class="tabs">
     <div class="tab active" onclick="openTab('account')">Account</div>
     <div class="tab" onclick="openTab('signal')">Signals</div>
+    <div class="tab" onclick="openTab('historyTab')">History</div>
   </div>
 
   <div class="content">
@@ -237,11 +232,17 @@ button:disabled{
         <div class="time" id="signalTime"></div>
       </div>
 
-      <div class="history" id="history"></div>
-
       <div class="analysis">
         Signals are generated using probabilistic modeling based on historical
         multiplier behavior, timing variance, and pattern distribution analysis.
+      </div>
+    </div>
+
+    <!-- HISTORY TAB -->
+    <div id="historyTab" class="card hidden">
+      <h3 style="margin-top:0;font-size:14px">Signal History</h3>
+      <div class="history-list" id="historyList">
+        No signals generated yet.
       </div>
     </div>
 
@@ -252,7 +253,7 @@ button:disabled{
 <div id="modal">
   <div class="modal-box">
     <div id="modalText">Connecting…</div>
-    <div class="spinner" id="spinner"></div>
+    <div class="spinner"></div>
   </div>
 </div>
 
@@ -263,8 +264,10 @@ const DAILY_LIMIT=15;
 
 let verified=false, active=false, timer;
 
-tz.textContent=Intl.DateTimeFormat().resolvedOptions().timeZone;
+// Timezone
+tz.textContent = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
+// Tabs
 function openTab(id){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.card').forEach(c=>c.classList.add('hidden'));
@@ -272,16 +275,25 @@ function openTab(id){
   document.getElementById(id).classList.remove('hidden');
 }
 
+// Storage
 function todayKey(){
   return `signals_${new Date().toISOString().slice(0,10)}`;
 }
-function historyKey(){ return `history_main`; }
+function historyKey(){ return `history_all`; }
 
 function updateDailyUsage(){
   const used = Number(localStorage.getItem(todayKey())) || 0;
   dailyUsage.textContent = `${used} / ${DAILY_LIMIT}`;
 }
 
+function loadHistory(){
+  const list = JSON.parse(localStorage.getItem(historyKey()) || "[]");
+  historyList.innerHTML = list.length
+    ? list.map(x=>`<div>${x}</div>`).join("")
+    : "No signals generated yet.";
+}
+
+// VERIFY
 function verifyAccess(){
   if(verified) return;
 
@@ -292,29 +304,26 @@ function verifyAccess(){
     return alert("Invalid access key");
 
   modal.style.display="flex";
-  modalText.textContent="Connecting…";
-  modalText.className="";
-  spinner.style.display="block";
+  const text=document.getElementById("modalText");
+
+  text.textContent="Connecting…";
+  setTimeout(()=>text.textContent="Verifying information…",800);
+  setTimeout(()=>{ text.textContent="Connected"; text.classList.add("success"); },1600);
 
   setTimeout(()=>{
-    modalText.textContent="Connected";
-    modalText.className="success success-anim";
-    spinner.style.display="none";
-
-    setTimeout(()=>{
-      modal.style.display="none";
-      verified=true;
-      accStatus.textContent="Connected";
-      sigState.textContent="Ready";
-      generateBtn.disabled=false;
-      verifyBtn.disabled=true;
-      telegramId.style.display="none";
-      accessKey.style.display="none";
-      updateDailyUsage();
-    },700);
-  },1200);
+    modal.style.display="none";
+    verified=true;
+    accStatus.textContent="Connected";
+    sigState.textContent="Ready";
+    generateBtn.disabled=false;
+    telegramId.style.display="none";
+    accessKey.style.display="none";
+    updateDailyUsage();
+    loadHistory();
+  },2300);
 }
 
+// Generate signal
 function generateSignal(){
   if(active) return;
 
@@ -325,12 +334,12 @@ function generateSignal(){
   localStorage.setItem(todayKey(), used);
   updateDailyUsage();
 
-  const mult=(Math.random()*(2.24-1.11)+1.11).toFixed(2);
-  const mins=Math.floor(Math.random()*5)+3;
-  const target=new Date(Date.now()+mins*60000);
+  const mult = (Math.random()*(1.95-1.13)+1.13).toFixed(2);
+  const mins = Math.floor(Math.random()*5)+3;
+  const target = new Date(Date.now()+mins*60000);
 
-  multiplier.textContent=`x${mult}`;
-  signalTime.textContent=`Execution time: ${target.toLocaleTimeString()}`;
+  multiplier.textContent = `🚀 cashout at: x${mult}`;
+  signalTime.textContent = `🕜 time: ${target.toLocaleTimeString()}`;
   signalCard.style.display="block";
   sigState.textContent="Active";
   generateBtn.disabled=true;
@@ -340,13 +349,14 @@ function generateSignal(){
   startCountdown(target);
 }
 
+// Countdown
 function startCountdown(target){
   clearInterval(timer);
   timer=setInterval(()=>{
     const d=target-new Date();
     if(d<=0){
       clearInterval(timer);
-      countdown.textContent="Signal Ready";
+      countdown.textContent="SIGNAL READY";
       sigState.textContent="Idle";
       generateBtn.disabled=false;
       active=false;
@@ -358,13 +368,14 @@ function startCountdown(target){
   },1000);
 }
 
+// Save history
 function saveHistory(m,t){
-  const list=JSON.parse(localStorage.getItem(historyKey())||"[]");
-  list.unshift(`x${m} — ${t.toLocaleTimeString()}`);
-  localStorage.setItem(historyKey(),JSON.stringify(list.slice(0,15)));
-  history.innerHTML=list.map(x=>`<div>${x}</div>`).join("");
+  const list = JSON.parse(localStorage.getItem(historyKey()) || "[]");
+  list.unshift(`🕜 time: ${t.toLocaleTimeString()}<br>🚀 cashout at: x${m}`);
+  localStorage.setItem(historyKey(), JSON.stringify(list));
+  loadHistory();
 }
 </script>
 
 </body>
-</html>
+        </html>
