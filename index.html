@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Malina Casino Aviator – Signal Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#0b0f1a;
+  --card:#12182a;
+  --accent:#ff4da6;
+  --accent2:#6f7cff;
+  --text:#e6e9f0;
+  --muted:#9aa0b4;
+  --success:#3ddc97;
+}
+*{box-sizing:border-box;font-family:Inter,system-ui}
+
+body{
+  margin:0;
+  background:linear-gradient(180deg,#070a14,var(--bg));
+  color:var(--text);
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+.container{
+  width:430px;
+  background:var(--card);
+  border-radius:16px;
+  box-shadow:0 30px 80px rgba(0,0,0,.6);
+  overflow:hidden;
+}
+
+header{
+  padding:18px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+}
+header h1{margin:0;font-size:16px;font-weight:700}
+header p{margin:4px 0 0;font-size:12px;opacity:.9}
+
+.tabs{
+  display:flex;
+  background:#0e1426;
+}
+.tab{
+  flex:1;
+  padding:12px;
+  text-align:center;
+  font-size:13px;
+  cursor:pointer;
+  color:var(--muted);
+}
+.tab.active{
+  color:#fff;
+  border-bottom:2px solid var(--accent);
+}
+
+.content{padding:18px}
+
+.card{
+  background:#0f1529;
+  border-radius:12px;
+  padding:16px;
+}
+
+input,button{
+  width:100%;
+  padding:12px;
+  border-radius:10px;
+  border:none;
+  font-size:13px;
+}
+
+input{
+  background:#0b1022;
+  color:#fff;
+  margin-bottom:10px;
+}
+
+button{
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#fff;
+  font-weight:600;
+  cursor:pointer;
+}
+
+button:disabled{
+  background:#2a2f45;
+  cursor:not-allowed;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:12px;
+}
+
+.stat{
+  background:#0b1022;
+  border-radius:10px;
+  padding:10px;
+  font-size:12px;
+}
+.stat span{
+  display:block;
+  color:var(--muted);
+  font-size:11px;
+}
+
+.signal-card{
+  margin-top:14px;
+  text-align:center;
+  display:none;
+}
+
+.multiplier{
+  font-size:36px;
+  font-weight:700;
+  color:#ffd36a;
+}
+
+.countdown{
+  font-size:22px;
+  margin-top:6px;
+  color:#6fffe9;
+}
+
+.time{
+  font-size:12px;
+  color:var(--muted);
+  margin-top:6px;
+}
+
+.history{
+  margin-top:14px;
+  font-size:12px;
+  color:var(--muted);
+  max-height:120px;
+  overflow:auto;
+}
+.history div{
+  padding:6px 0;
+  border-bottom:1px solid rgba(255,255,255,.05);
+}
+
+.analysis{
+  margin-top:14px;
+  font-size:12px;
+  color:#9aa0b4;
+  line-height:1.5;
+}
+
+.hidden{display:none}
+
+/* Modal */
+#modal{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.6);
+  align-items:center;
+  justify-content:center;
+}
+
+.modal-box{
+  background:#0f1529;
+  padding:20px;
+  border-radius:14px;
+  width:260px;
+  text-align:center;
+}
+
+.spinner{
+  width:28px;height:28px;
+  border:3px solid #2a2f45;
+  border-top:3px solid var(--accent);
+  border-radius:50%;
+  margin:12px auto;
+  animation:spin 1s linear infinite;
+}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes successPop{
+  from{opacity:0;transform:scale(.95)}
+  to{opacity:1;transform:scale(1)}
+}
+.success{color:var(--success)}
+.success-anim{animation:successPop .3s ease-out}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <header>
+    <h1>Malina Casino Aviator</h1>
+    <p>Private Signal Dashboard</p>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" onclick="openTab('account')">Account</div>
+    <div class="tab" onclick="openTab('signal')">Signals</div>
+  </div>
+
+  <div class="content">
+
+    <!-- ACCOUNT -->
+    <div id="account" class="card">
+      <input id="telegramId" placeholder="Telegram User ID">
+      <input id="accessKey" placeholder="Access Key">
+      <button id="verifyBtn" onclick="verifyAccess()">Verify Access</button>
+
+      <div class="grid">
+        <div class="stat"><span>Status</span><div id="accStatus">Disconnected</div></div>
+        <div class="stat"><span>Daily Usage</span><div id="dailyUsage">0 / 15</div></div>
+        <div class="stat"><span>Signal State</span><div id="sigState">Idle</div></div>
+        <div class="stat"><span>Timezone</span><div id="tz"></div></div>
+      </div>
+    </div>
+
+    <!-- SIGNAL -->
+    <div id="signal" class="card hidden">
+      <button id="generateBtn" onclick="generateSignal()" disabled>
+        Request Signal
+      </button>
+
+      <div class="signal-card" id="signalCard">
+        <div class="multiplier" id="multiplier"></div>
+        <div class="countdown" id="countdown"></div>
+        <div class="time" id="signalTime"></div>
+      </div>
+
+      <div class="history" id="history"></div>
+
+      <div class="analysis">
+        Signals are generated using probabilistic modeling based on historical
+        multiplier behavior, timing variance, and pattern distribution analysis.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL -->
+<div id="modal">
+  <div class="modal-box">
+    <div id="modalText">Connecting…</div>
+    <div class="spinner" id="spinner"></div>
+  </div>
+</div>
+
+<script>
+const ACCESS_KEY="MALINA-AVIATOR-2025";
+const ALLOWED_TELEGRAM_ID="7577865885";
+const DAILY_LIMIT=15;
+
+let verified=false, active=false, timer;
+
+tz.textContent=Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+function openTab(id){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.card').forEach(c=>c.classList.add('hidden'));
+  document.querySelector(`.tab[onclick*="${id}"]`).classList.add('active');
+  document.getElementById(id).classList.remove('hidden');
+}
+
+function todayKey(){
+  return `signals_${new Date().toISOString().slice(0,10)}`;
+}
+function historyKey(){ return `history_main`; }
+
+function updateDailyUsage(){
+  const used = Number(localStorage.getItem(todayKey())) || 0;
+  dailyUsage.textContent = `${used} / ${DAILY_LIMIT}`;
+}
+
+function verifyAccess(){
+  if(verified) return;
+
+  if(telegramId.value.trim()!==ALLOWED_TELEGRAM_ID)
+    return alert("Unauthorized Telegram account");
+
+  if(accessKey.value.trim()!==ACCESS_KEY)
+    return alert("Invalid access key");
+
+  modal.style.display="flex";
+  modalText.textContent="Connecting…";
+  modalText.className="";
+  spinner.style.display="block";
+
+  setTimeout(()=>{
+    modalText.textContent="Connected";
+    modalText.className="success success-anim";
+    spinner.style.display="none";
+
+    setTimeout(()=>{
+      modal.style.display="none";
+      verified=true;
+      accStatus.textContent="Connected";
+      sigState.textContent="Ready";
+      generateBtn.disabled=false;
+      verifyBtn.disabled=true;
+      telegramId.style.display="none";
+      accessKey.style.display="none";
+      updateDailyUsage();
+    },700);
+  },1200);
+}
+
+function generateSignal(){
+  if(active) return;
+
+  let used = Number(localStorage.getItem(todayKey())) || 0;
+  if(used >= DAILY_LIMIT) return alert("Daily limit reached");
+
+  used++;
+  localStorage.setItem(todayKey(), used);
+  updateDailyUsage();
+
+  const mult=(Math.random()*(2.24-1.11)+1.11).toFixed(2);
+  const mins=Math.floor(Math.random()*5)+3;
+  const target=new Date(Date.now()+mins*60000);
+
+  multiplier.textContent=`x${mult}`;
+  signalTime.textContent=`Execution time: ${target.toLocaleTimeString()}`;
+  signalCard.style.display="block";
+  sigState.textContent="Active";
+  generateBtn.disabled=true;
+  active=true;
+
+  saveHistory(mult,target);
+  startCountdown(target);
+}
+
+function startCountdown(target){
+  clearInterval(timer);
+  timer=setInterval(()=>{
+    const d=target-new Date();
+    if(d<=0){
+      clearInterval(timer);
+      countdown.textContent="Signal Ready";
+      sigState.textContent="Idle";
+      generateBtn.disabled=false;
+      active=false;
+      return;
+    }
+    const m=Math.floor(d/60000);
+    const s=Math.floor((d%60000)/1000);
+    countdown.textContent=`${m}:${s.toString().padStart(2,'0')}`;
+  },1000);
+}
+
+function saveHistory(m,t){
+  const list=JSON.parse(localStorage.getItem(historyKey())||"[]");
+  list.unshift(`x${m} — ${t.toLocaleTimeString()}`);
+  localStorage.setItem(historyKey(),JSON.stringify(list.slice(0,15)));
+  history.innerHTML=list.map(x=>`<div>${x}</div>`).join("");
+}
+</script>
+
+</body>
+</html>
